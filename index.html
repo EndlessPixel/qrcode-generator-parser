@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>二维码生成与解析</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="container">
+    <h1>二维码生成与解析</h1>
+    <div class="tabs" role="tablist">
+      <button id="tab-generate" role="tab" aria-selected="true" onclick="switchTab('generate')">生成二维码</button>
+      <button id="tab-parse" role="tab" aria-selected="false" onclick="switchTab('parse')">解析二维码</button>
+    </div>
+
+    <div id="generate-tab" role="tabpanel" aria-labelledby="tab-generate">
+      <h2>生成二维码</h2>
+      <div class="form-group">
+        <label for="text-input">输入文本：</label>
+        <input type="text" id="text-input" name="text" placeholder="请输入文本">
+      </div>
+      <div class="form-group">
+        <button onclick="generateQRCode()">生成二维码</button>
+        <button id="download-btn" class="hidden">下载二维码图片</button>
+      </div>
+      <div id="qrcode-container"></div>
+    </div>
+
+    <div id="parse-tab" role="tabpanel" aria-labelledby="tab-parse" class="hidden">
+      <h2>解析二维码</h2>
+      <div class="form-group">
+        <label for="image-upload">上传二维码图片：</label>
+        <input type="file" id="image-upload" name="qr-image" accept="image/*">
+      </div>
+      <div class="form-group">
+        <button onclick="parseQRCode()">解析二维码</button>
+      </div>
+      <div id="parsed-text"></div>
+    </div>
+
+    <button id="debug-btn">查看调试</button>
+
+    <div id="debug-modal" class="hidden">
+      <div id="debug-content">
+        <h2>调试日志</h2>
+        <pre id="debug-log"></pre>
+        <button id="debug-close">×</button>
+        <div class="form-group">
+          <button id="download-log-btn">下载日志文件</button>
+          <button id="copy-log-btn">复制日志内容</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+
+</html>

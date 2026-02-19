@@ -1,0 +1,408 @@
+/* ===== 重置 & 基础 ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: linear-gradient(135deg, #f0f4f8 0%, #e6edf5 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1.875rem;
+    /* 30px */
+    color: #2d3748;
+}
+
+/* ===== 设计变量 ===== */
+:root {
+    /* 颜色 */
+    --primary-start: #00b894;
+    --primary-end: #00cec9;
+    --primary-dark-start: #00a886;
+    --primary-dark-end: #00beb0;
+    --gray-100: #f7fafc;
+    --gray-200: #e6edf5;
+    --gray-600: #4a5568;
+    --gray-800: #2d3748;
+    --gray-900: #1e293b;
+    --debug-bg: #1e293b;
+    --debug-code-bg: #0f172a;
+    --overlay-bg: rgba(0, 0, 0, 0.65);
+    --danger-start: #ff7675;
+    --danger-end: #d63031;
+    --shadow-color: rgba(14, 55, 71, 0.08);
+
+    /* 圆角 */
+    --radius-sm: 0.5rem;
+    /* 8px */
+    --radius-md: 0.75rem;
+    /* 12px */
+    --radius-lg: 1rem;
+    /* 16px */
+    --radius-xl: 1.5rem;
+    /* 24px */
+    --radius-full: 624.9375rem;
+    /* 很大值，用于圆形 */
+
+    /* 间距 */
+    --space-xs: 0.25rem;
+    /* 4px */
+    --space-sm: 0.5rem;
+    /* 8px */
+    --space-md: 1rem;
+    /* 16px */
+    --space-lg: 1.5rem;
+    /* 24px */
+    --space-xl: 2rem;
+    /* 32px */
+    --space-2xl: 2.5rem;
+    /* 40px */
+
+    /* 字体大小 */
+    --text-xs: 0.75rem;
+    /* 12px */
+    --text-sm: 0.875rem;
+    /* 14px */
+    --text-base: 1rem;
+    /* 16px */
+    --text-lg: 1.125rem;
+    /* 18px */
+    --text-xl: 1.25rem;
+    /* 20px */
+}
+
+/* ===== 通用组件 ===== */
+.container {
+    width: 43.75rem;
+    /* 700px */
+    background: rgba(255, 255, 255, 0.96);
+    border-radius: var(--radius-xl);
+    backdrop-filter: blur(20px);
+    box-shadow: 0 0.625rem 2.5rem var(--shadow-color);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    padding: var(--space-2xl);
+    position: relative;
+}
+
+/* 标题 */
+h1 {
+    color: var(--gray-800);
+    font-size: var(--text-xl);
+    margin: 0 0 var(--space-xl);
+    text-align: center;
+    font-weight: 600;
+}
+
+h2 {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    margin-bottom: var(--space-lg);
+    color: var(--gray-800);
+}
+
+/* 按钮基础样式 */
+button {
+    padding: 0.75rem 1.875rem;
+    /* 12px 30px */
+    border: none;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, var(--primary-start), var(--primary-end));
+    color: white;
+    font-weight: 500;
+    font-size: var(--text-sm);
+    transition: all 0.2s ease;
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 184, 148, 0.15);
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    flex: none;
+    width: auto;
+    min-width: 7.5rem;
+    /* 120px */
+    line-height: 1.4;
+}
+
+button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0.375rem 1rem rgba(0, 184, 148, 0.25);
+    background: linear-gradient(135deg, var(--primary-dark-start), var(--primary-dark-end));
+}
+
+button:active {
+    transform: translateY(0);
+    box-shadow: 0 0.125rem 0.5rem rgba(0, 184, 148, 0.2);
+}
+
+/* 键盘焦点样式 */
+button:focus-visible,
+input:focus-visible {
+    outline: 2px solid var(--primary-end);
+    outline-offset: 2px;
+}
+
+/* Tab切换栏 */
+.tabs {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+}
+
+/* 表单组 */
+.form-group {
+    margin-bottom: var(--space-lg);
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: var(--space-sm);
+    font-weight: 500;
+    color: var(--gray-600);
+    font-size: var(--text-sm);
+}
+
+/* 输入框 */
+input[type="text"],
+input[type="file"] {
+    width: 100%;
+    padding: 0.875rem 1.125rem;
+    /* 14px 18px */
+    border: 1px solid rgba(0, 184, 148, 0.18);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.95);
+    transition: all 0.25s ease;
+    font-size: var(--text-sm);
+    font-family: inherit;
+}
+
+input[type="text"]:focus {
+    border-color: var(--primary-end);
+    box-shadow: 0 0 0 4px rgba(0, 206, 201, 0.15);
+    outline: none;
+}
+
+/* 文件上传按钮样式 - 合并重复规则 */
+input[type="file"]::file-selector-button,
+input[type="file"]::-webkit-file-upload-button {
+    border: none;
+    padding: 0.625rem 1.25rem;
+    /* 10px 20px */
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, var(--primary-start), var(--primary-end));
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-right: 0.9375rem;
+    /* 15px */
+    font-size: var(--text-sm);
+    flex: none;
+}
+
+/* 二维码容器 */
+#qrcode-container {
+    margin: var(--space-xl) 0;
+    padding: var(--space-xl);
+    background: var(--gray-100);
+    border-radius: var(--radius-lg);
+    text-align: center;
+    box-shadow: 0 0.25rem 0.75rem rgba(14, 55, 71, 0.05);
+    border: 1px solid rgba(0, 184, 148, 0.08);
+}
+
+#qrcode-container img {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--radius-sm);
+}
+
+/* 下载按钮 - 默认隐藏由 .hidden 类控制，此处只定义样式 */
+#download-btn {
+    background: linear-gradient(135deg, var(--primary-end), var(--primary-start));
+    margin: var(--space-lg) auto 0;
+    /* display 由 .hidden 类控制，不在此处设置 */
+}
+
+/* 解析结果区域 */
+#parsed-text {
+    padding: 1.125rem 1.25rem;
+    /* 18px 20px */
+    background: var(--gray-100);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    color: var(--gray-800);
+    min-height: 5rem;
+    /* 80px */
+    border: 1px solid rgba(0, 184, 148, 0.08);
+}
+
+/* 调试按钮 - 右上角 */
+#debug-btn {
+    position: absolute;
+    top: var(--space-lg);
+    right: var(--space-lg);
+    padding: var(--space-sm) var(--space-md);
+    font-size: var(--text-xs);
+    background: linear-gradient(135deg, #718096, #4a5568);
+    box-shadow: 0 0.125rem 0.5rem rgba(113, 128, 150, 0.15);
+    margin: 0;
+    min-width: 5rem;
+    /* 80px */
+}
+
+/* ===== 调试模态框 ===== */
+#debug-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--overlay-bg);
+    backdrop-filter: blur(8px);
+    z-index: 9999;
+    /* 默认隐藏由 .hidden 类控制，不在此处设置 display */
+}
+
+#debug-content {
+    position: relative;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 50rem;
+    /* 800px */
+    max-width: 95vw;
+    max-height: 80vh;
+    background: var(--debug-bg);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    box-shadow: 0 1.5625rem 3.125rem rgba(0, 0, 0, 0.35);
+    color: #f1f5f9;
+}
+
+#debug-content h2 {
+    margin-bottom: var(--space-lg);
+    font-size: var(--text-lg);
+    color: #f1f5f9;
+}
+
+#debug-content pre {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: var(--space-lg);
+    background: var(--debug-code-bg);
+    border-radius: var(--radius-sm);
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    font-size: var(--text-xs);
+    line-height: 1.5;
+    /* Firefox 滚动条 */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 184, 148, 0.25) rgba(0, 184, 148, 0.05);
+}
+
+/* WebKit 滚动条 */
+#debug-content pre::-webkit-scrollbar {
+    width: 8px;
+}
+
+#debug-content pre::-webkit-scrollbar-track {
+    background: rgba(0, 184, 148, 0.05);
+    border-radius: 4px;
+}
+
+#debug-content pre::-webkit-scrollbar-thumb {
+    background: rgba(0, 184, 148, 0.25);
+    border-radius: 4px;
+}
+
+/* 关闭按钮 - 圆形 */
+#debug-close {
+    padding: 0;
+    width: 2.5rem;
+    /* 40px */
+    height: 2.5rem;
+    font-size: var(--text-base);
+    background: linear-gradient(135deg, var(--danger-start), var(--danger-end));
+    position: absolute;
+    top: var(--space-lg);
+    right: var(--space-lg);
+    border-radius: var(--radius-full);
+    min-width: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 调试窗口内按钮组 */
+#debug-content .form-group {
+    display: flex;
+    gap: var(--space-md);
+    margin-top: var(--space-lg);
+}
+
+#debug-content #download-log-btn,
+#debug-content #copy-log-btn {
+    min-width: 8.75rem;
+    /* 140px */
+    margin: 0;
+}
+
+/* ===== 工具类 ===== */
+/* 控制元素显示隐藏，供 JS 使用 */
+.hidden {
+    display: none !important;
+}
+
+/* ===== 响应式设计 ===== */
+@media (max-width: 768px) {
+    body {
+        padding: var(--space-sm);
+    }
+
+    .container {
+        width: 100%;
+        padding: var(--space-lg);
+        border-radius: var(--radius-lg);
+    }
+
+    button {
+        width: 100%;
+        margin: var(--space-xs) 0;
+        min-width: auto;
+    }
+
+    #debug-content {
+        width: 95%;
+        padding: var(--space-lg);
+    }
+
+    h1 {
+        font-size: 1.375rem;
+        /* 22px */
+    }
+
+    .tabs {
+        flex-direction: column;
+        gap: var(--space-sm);
+    }
+}
+
+/* 对于超小屏幕进一步优化 */
+@media (max-width: 480px) {
+    :root {
+        --space-xl: 1.25rem;
+        /* 减小间距 */
+    }
+
+    #debug-btn {
+        top: var(--space-sm);
+        right: var(--space-sm);
+    }
+}
