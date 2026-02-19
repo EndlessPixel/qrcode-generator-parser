@@ -1,5 +1,10 @@
 # QR Code Generator & Parser
 
+![GitHub language count](https://img.shields.io/github/languages/count/EndlessPixel/qrcode-generator-parser)
+![GitHub top language](https://img.shields.io/github/languages/top/EndlessPixel/qrcode-generator-parser)
+![GitHub License](https://img.shields.io/github/license/EndlessPixel/qrcode-generator-parser)
+![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Active-brightgreen)
+
 一个简洁、现代的二维码生成与解析工具，支持生成二维码、下载图片、解析上传的二维码图片，并内置调试日志面板。
 
 ## ✨ 功能特性
