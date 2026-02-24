@@ -7,7 +7,7 @@
     let debugLog, debugModal, debugClose, debugBtn;
     let generateTab, parseTab;
     let qrcodeContainer, downloadBtn, parsedTextDiv;
-    let fileInput, textInput;
+    let fileInput, textInput, generateFileInput;
 
     // 日志数组（用于批量渲染或下载）
     let logEntries = [];
@@ -26,6 +26,7 @@
         parsedTextDiv = document.getElementById('parsed-text');
         fileInput = document.getElementById('image-upload');
         textInput = document.getElementById('text-input');
+        generateFileInput = document.getElementById('file-input');
 
         // 初始日志
         log('用户打开了网站');
@@ -45,6 +46,23 @@
 
         // 绑定事件
         bindEvents();
+        
+        // 绑定文件输入和文本输入的互斥事件
+        textInput.addEventListener('input', function() {
+            // 当用户输入文本时，清除文件上传
+            if (generateFileInput.files.length > 0) {
+                generateFileInput.value = '';
+                log('用户输入文本，清除了文件上传');
+            }
+        });
+        
+        generateFileInput.addEventListener('change', function() {
+            // 当用户上传文件时，清除文本输入
+            if (textInput.value.trim() !== '') {
+                textInput.value = '';
+                log('用户上传文件，清除了文本输入');
+            }
+        });
 
         // 确保默认显示生成选项卡，解析选项卡隐藏
         showTab('generate');
@@ -92,9 +110,15 @@
         if (tabId === 'generate') {
             generateTab.classList.remove('hidden');
             parseTab.classList.add('hidden');
+            // 更新ARIA属性
+            document.getElementById('tab-generate').setAttribute('aria-selected', 'true');
+            document.getElementById('tab-parse').setAttribute('aria-selected', 'false');
         } else {
             generateTab.classList.add('hidden');
             parseTab.classList.remove('hidden');
+            // 更新ARIA属性
+            document.getElementById('tab-generate').setAttribute('aria-selected', 'false');
+            document.getElementById('tab-parse').setAttribute('aria-selected', 'true');
         }
         log('用户切换了板块：' + tabId);
     }
@@ -118,18 +142,63 @@
         log('调试框关闭成功');
     }
 
+    // 读取文件内容的函数
+    function readFileContent(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                resolve(event.target.result);
+            };
+            reader.onerror = function() {
+                reject(new Error('文件读取失败'));
+            };
+            
+            // 对于所有文件类型，使用DataURL确保能正确处理
+            reader.readAsDataURL(file);
+        });
+    }
+
     // 生成二维码（带重试机制）
     async function generateQRCode(retryCount = 0, maxRetries = 3) {
         log('用户点击了生成按钮');
         log('开始生成二维码...');
 
-        const text = textInput.value.trim();
-        if (!text) {
-            log('获取输入框文本，失败：输入框为空');
-            alert('请输入文本');
-            return;
+        let content = '';
+        let isFileContent = false;
+        
+        // 检查是否有上传的文件
+        const file = generateFileInput.files[0];
+        if (file) {
+            // 只验证文件大小，不限制文件类型
+            const maxSize = 1 * 1024 * 1024; // 1MB
+            if (file.size > maxSize) {
+                log('上传文件，失败：文件大小超过限制');
+                alert('文件大小不能超过1MB');
+                return;
+            }
+            
+            log('上传文件，成功：' + file.name);
+            
+            try {
+                log('读取上传文件，成功');
+                content = await readFileContent(file);
+                isFileContent = true;
+                log('文件内容读取成功');
+            } catch (error) {
+                log(`文件读取失败：${error.message}`);
+                alert('文件读取失败，请重试');
+                return;
+            }
+        } else {
+            // 使用文本输入
+            content = textInput.value.trim();
+            if (!content) {
+                log('获取输入框文本，失败：输入框为空');
+                alert('请输入文本或上传文件');
+                return;
+            }
+            log('获取输入框文本，成功');
         }
-        log('获取输入框文本，成功');
 
         // 清空容器并隐藏下载按钮
         qrcodeContainer.innerHTML = '';
@@ -138,7 +207,7 @@
         try {
             // 生成二维码数据
             const qr = qrcode(0, 'H');
-            qr.addData(text);
+            qr.addData(content);
             qr.make();
 
             const img = document.createElement('img');
@@ -166,14 +235,25 @@
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             const code = jsQR(imageData.data, imageData.width, imageData.height);
 
-            if (code && code.data === text) {
-                log('自动解析验证成功');
-                downloadBtn.classList.remove('hidden');
+            if (code) {
+                // 对于文件内容，只验证是否成功解析，不验证内容完全匹配
+                if (isFileContent || code.data === content) {
+                    log('自动解析验证成功');
+                    downloadBtn.classList.remove('hidden');
+                } else {
+                    log('自动验证失败' + (retryCount < maxRetries ? '，准备重试...' : '，已达最大重试次数'));
+                    if (retryCount < maxRetries) {
+                        // 使用setTimeout避免同步递归调用
+                        setTimeout(() => generateQRCode(retryCount + 1, maxRetries), 100);
+                    } else {
+                        qrcodeContainer.innerHTML = '<p style="color:red;">二维码生成验证失败，请重试</p>';
+                    }
+                }
             } else {
                 log('自动验证失败' + (retryCount < maxRetries ? '，准备重试...' : '，已达最大重试次数'));
                 if (retryCount < maxRetries) {
-                    // 递归重试（但避免无限递归）
-                    generateQRCode(retryCount + 1, maxRetries);
+                    // 使用setTimeout避免同步递归调用
+                    setTimeout(() => generateQRCode(retryCount + 1, maxRetries), 100);
                 } else {
                     qrcodeContainer.innerHTML = '<p style="color:red;">二维码生成验证失败，请重试</p>';
                 }
@@ -214,6 +294,22 @@
             return;
         }
 
+        // 验证文件类型
+        const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!validTypes.includes(file.type)) {
+            log('上传文件，失败：文件类型不支持');
+            alert('请选择支持的图片格式（JPEG、PNG、GIF、WebP）');
+            return;
+        }
+
+        // 验证文件大小（限制为5MB）
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+            log('上传文件，失败：文件大小超过限制');
+            alert('图片文件大小不能超过5MB');
+            return;
+        }
+
         log('上传文件，成功');
         const reader = new FileReader();
         reader.onload = function (event) {
@@ -221,18 +317,30 @@
             const img = new Image();
             img.onload = function () {
                 log('加载图片，成功');
+                
+                // 限制图片尺寸，避免过大的图片导致性能问题
+                const maxDimension = 1000;
+                let width = img.width;
+                let height = img.height;
+                
+                if (width > maxDimension || height > maxDimension) {
+                    const ratio = Math.min(maxDimension / width, maxDimension / height);
+                    width *= ratio;
+                    height *= ratio;
+                }
+                
                 const canvas = document.createElement('canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
+                canvas.width = width;
+                canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 if (!ctx) {
                     log('获取 canvas 上下文失败');
                     parsedTextDiv.textContent = '无法创建画布上下文';
                     return;
                 }
-                ctx.drawImage(img, 0, 0);
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                ctx.drawImage(img, 0, 0, width, height);
+                const imageData = ctx.getImageData(0, 0, width, height);
+                const code = jsQR(imageData.data, width, height);
                 if (code) {
                     log('解析二维码，成功');
                     parsedTextDiv.textContent = '解析结果：' + code.data;
@@ -294,10 +402,16 @@
                     textArea.value = logContent;
                     textArea.style.position = 'fixed';
                     textArea.style.opacity = '0';
+                    textArea.style.pointerEvents = 'none';
                     document.body.appendChild(textArea);
+                    
+                    // 确保文本被选中
                     textArea.select();
+                    textArea.setSelectionRange(0, logContent.length);
+                    
                     const result = document.execCommand('copy');
                     document.body.removeChild(textArea);
+                    
                     if (result) {
                         log('方法2：execCommand复制成功');
                         success = true;
