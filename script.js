@@ -6,11 +6,15 @@
     // 缓存常用 DOM 元素
     let debugLog, debugModal, debugClose, debugBtn;
     let generateTab, parseTab;
-    let qrcodeContainer, downloadBtn, parsedTextDiv;
+    let qrcodeContainer, downloadBtn, parsedTextDiv, downloadFileBtn;
     let fileInput, textInput, generateFileInput;
+    let toastContainer;
 
     // 日志数组（用于批量渲染或下载）
     let logEntries = [];
+    
+    // 存储解析出的DataURL内容，用于文件还原
+    let parsedDataURL = null;
 
     // 初始化函数
     function init() {
@@ -27,6 +31,8 @@
         fileInput = document.getElementById('image-upload');
         textInput = document.getElementById('text-input');
         generateFileInput = document.getElementById('file-input');
+        downloadFileBtn = document.getElementById('download-file-btn');
+        toastContainer = document.getElementById('toast-container');
 
         // 初始日志
         log('用户打开了网站');
@@ -63,9 +69,48 @@
                 log('用户上传文件，清除了文本输入');
             }
         });
+        
+        // 绑定文件下载按钮点击事件
+        downloadFileBtn.addEventListener('click', downloadRestoredFile);
 
         // 确保默认显示生成选项卡，解析选项卡隐藏
         showTab('generate');
+    }
+
+    // 显示提示框的函数
+    function showToast(message, type = 'info') {
+        // 创建提示框元素
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        
+        // 添加内容
+        const content = document.createElement('div');
+        content.className = 'toast-content';
+        content.textContent = message;
+        
+        // 添加关闭按钮
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'toast-close';
+        closeBtn.textContent = '×';
+        closeBtn.addEventListener('click', function() {
+            toast.style.animation = 'fadeOut 0.3s ease-in forwards';
+            setTimeout(() => toast.remove(), 300);
+        });
+        
+        // 组装提示框
+        toast.appendChild(content);
+        toast.appendChild(closeBtn);
+        
+        // 添加到容器
+        toastContainer.appendChild(toast);
+        
+        // 3秒后自动移除
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.style.animation = 'fadeOut 0.3s ease-in forwards';
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, 3000);
     }
 
     // 事件绑定
@@ -82,24 +127,54 @@
     }
 
     // 日志记录函数
-    function log(message) {
+    function log(message, level = 'info') {
         const now = new Date();
-        const timestamp = now.toLocaleString('zh-CN', {
+        const date = now.toLocaleDateString('zh-CN', {
             year: 'numeric',
             month: '2-digit',
-            day: '2-digit',
+            day: '2-digit'
+        }).replace(/\//g, '-');
+        const time = now.toLocaleTimeString('zh-CN', {
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
             hour12: false
-        }).replace(/\//g, '-');
+        });
 
-        const logEntry = `[${timestamp}] ${message}`;
+        const logEntry = `[${date} ${time} ${level.toUpperCase()}] ${message}`;
         logEntries.push(logEntry);
 
-        // 更新 UI（使用 insertAdjacentText 避免完全替换）
+        // 更新 UI（使用 HTML 元素添加颜色）
         if (debugLog) {
-            debugLog.insertAdjacentText('beforeend', logEntry + '\n');
+            const logElement = document.createElement('div');
+            
+            // 根据日志级别设置颜色
+            let levelColor;
+            switch (level.toLowerCase()) {
+                case 'error':
+                    levelColor = '#ff6b6b';
+                    break;
+                case 'warn':
+                    levelColor = '#ffd93d';
+                    break;
+                case 'info':
+                    levelColor = '#4ecdc4';
+                    break;
+                case 'success':
+                    levelColor = '#6bcb77';
+                    break;
+                default:
+                    levelColor = '#a0a0a0';
+            }
+            
+            // 创建带颜色的日志元素
+            logElement.innerHTML = `
+                <span style="color: #888;">[${date} ${time}]</span> 
+                <span style="color: ${levelColor}; font-weight: bold;">${level.toUpperCase()}</span> 
+                <span style="color: #e0e0e0;">${message}</span>
+            `;
+            
+            debugLog.appendChild(logElement);
             // 自动滚动到底部
             debugLog.scrollTop = debugLog.scrollHeight;
         }
@@ -173,7 +248,7 @@
             const maxSize = 1 * 1024 * 1024; // 1MB
             if (file.size > maxSize) {
                 log('上传文件，失败：文件大小超过限制');
-                alert('文件大小不能超过1MB');
+                showToast('文件大小不能超过1MB', 'error');
                 return;
             }
             
@@ -186,7 +261,7 @@
                 log('文件内容读取成功');
             } catch (error) {
                 log(`文件读取失败：${error.message}`);
-                alert('文件读取失败，请重试');
+                showToast('文件读取失败，请重试', 'error');
                 return;
             }
         } else {
@@ -194,7 +269,7 @@
             content = textInput.value.trim();
             if (!content) {
                 log('获取输入框文本，失败：输入框为空');
-                alert('请输入文本或上传文件');
+                showToast('请输入文本或上传文件', 'error');
                 return;
             }
             log('获取输入框文本，成功');
@@ -288,9 +363,12 @@
 
         const file = fileInput.files[0];
         parsedTextDiv.textContent = '';
+        parsedDataURL = null;
+        downloadFileBtn.classList.add('hidden');
+        
         if (!file) {
             log('上传文件，失败：未选择文件');
-            alert('请选择图片文件');
+            showToast('请选择图片文件', 'error');
             return;
         }
 
@@ -298,7 +376,7 @@
         const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
         if (!validTypes.includes(file.type)) {
             log('上传文件，失败：文件类型不支持');
-            alert('请选择支持的图片格式（JPEG、PNG、GIF、WebP）');
+            showToast('请选择支持的图片格式（JPEG、PNG、GIF、WebP）', 'error');
             return;
         }
 
@@ -306,7 +384,7 @@
         const maxSize = 5 * 1024 * 1024;
         if (file.size > maxSize) {
             log('上传文件，失败：文件大小超过限制');
-            alert('图片文件大小不能超过5MB');
+            showToast('图片文件大小不能超过5MB', 'error');
             return;
         }
 
@@ -343,7 +421,18 @@
                 const code = jsQR(imageData.data, width, height);
                 if (code) {
                     log('解析二维码，成功');
-                    parsedTextDiv.textContent = '解析结果：' + code.data;
+                    
+                    // 检查是否为DataURL格式
+                    const codeData = code.data;
+                    if (codeData.startsWith('data:')) {
+                        log('识别到DataURL格式内容，可能是文件二维码');
+                        parsedDataURL = codeData;
+                        parsedTextDiv.textContent = '解析结果：文件内容（DataURL格式）';
+                        downloadFileBtn.classList.remove('hidden');
+                    } else {
+                        log('识别到普通文本内容');
+                        parsedTextDiv.textContent = '解析结果：' + codeData;
+                    }
                 } else {
                     log('解析二维码，失败');
                     parsedTextDiv.textContent = '无法解析二维码';
@@ -453,7 +542,7 @@
                 sel.removeAllRanges();
                 sel.addRange(range);
 
-                alert('⚠️ 请手动按 Ctrl+C 复制选中内容');
+                showToast('⚠️ 请手动按 Ctrl+C 复制选中内容', 'info');
 
                 // 恢复 contentEditable（延迟一点，避免干扰复制操作）
                 setTimeout(() => {
@@ -463,12 +552,93 @@
             }
 
             if (success) {
-                alert('✅ 复制成功！');
+                showToast('✅ 复制成功！', 'success');
                 log('用户收到成功提示');
             }
         } catch (error) {
             log(`全局捕获异常：${error.message}`);
-            alert('❌ 复制过程中发生意外错误');
+            showToast('❌ 复制过程中发生意外错误', 'error');
         }
+    }
+
+    // 下载还原文件
+    function downloadRestoredFile() {
+        if (!parsedDataURL) {
+            log('下载失败：未找到解析的文件内容');
+            showToast('未找到可下载的文件内容', 'error');
+            return;
+        }
+
+        log('用户点击了下载还原文件按钮');
+        
+        try {
+            // 从DataURL中提取信息
+            const dataURLParts = parsedDataURL.split(',');
+            if (dataURLParts.length < 2) {
+                throw new Error('无效的DataURL格式');
+            }
+            
+            const metadata = dataURLParts[0];
+            const base64Content = dataURLParts[1];
+            
+            // 提取MIME类型
+            const mimeMatch = metadata.match(/data:(.+?);base64/);
+            const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+            
+            // 解码Base64内容
+            try {
+                const byteCharacters = atob(base64Content);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                
+                // 创建Blob对象
+                const blob = new Blob([byteArray], { type: mimeType });
+                const url = URL.createObjectURL(blob);
+                
+                // 生成文件名
+                const extension = getFileExtensionFromMimeType(mimeType);
+                const fileName = `restored-file${extension}`;
+                
+                // 创建下载链接
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                a.click();
+                
+                // 清理
+                URL.revokeObjectURL(url);
+                
+                log(`文件下载成功，文件名：${fileName}，MIME类型：${mimeType}`);
+                showToast(`文件下载成功！\n文件名：${fileName}\n文件类型：${mimeType}`, 'success');
+            } catch (decodeError) {
+                throw new Error('Base64解码失败：' + decodeError.message);
+            }
+        } catch (error) {
+            log(`文件下载失败：${error.message}`);
+            showToast(`文件下载失败：${error.message}\n请重试或检查二维码内容是否正确`, 'error');
+        }
+    }
+
+    // 根据MIME类型获取文件扩展名
+    function getFileExtensionFromMimeType(mimeType) {
+        const mimeToExt = {
+            'text/plain': '.txt',
+            'text/html': '.html',
+            'text/css': '.css',
+            'text/javascript': '.js',
+            'application/json': '.json',
+            'application/xml': '.xml',
+            'image/jpeg': '.jpg',
+            'image/png': '.png',
+            'image/gif': '.gif',
+            'image/webp': '.webp',
+            'application/pdf': '.pdf',
+            'application/zip': '.zip'
+        };
+        
+        return mimeToExt[mimeType] || '.bin';
     }
 })();

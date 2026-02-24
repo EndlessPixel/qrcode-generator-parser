@@ -292,14 +292,12 @@ input[type="file"]::-webkit-file-upload-button {
     color: #f1f5f9;
 }
 
-#debug-content pre {
+#debug-content #debug-log {
     max-height: 60vh;
     overflow-y: auto;
     padding: var(--space-lg);
     background: var(--debug-code-bg);
     border-radius: var(--radius-sm);
-    word-wrap: break-word;
-    white-space: pre-wrap;
     font-size: var(--text-xs);
     line-height: 1.5;
     /* Firefox 滚动条 */
@@ -307,17 +305,21 @@ input[type="file"]::-webkit-file-upload-button {
     scrollbar-color: rgba(0, 184, 148, 0.25) rgba(0, 184, 148, 0.05);
 }
 
+#debug-content #debug-log div {
+    margin-bottom: var(--space-xs);
+}
+
 /* WebKit 滚动条 */
-#debug-content pre::-webkit-scrollbar {
+#debug-content #debug-log::-webkit-scrollbar {
     width: 8px;
 }
 
-#debug-content pre::-webkit-scrollbar-track {
+#debug-content #debug-log::-webkit-scrollbar-track {
     background: rgba(0, 184, 148, 0.05);
     border-radius: 4px;
 }
 
-#debug-content pre::-webkit-scrollbar-thumb {
+#debug-content #debug-log::-webkit-scrollbar-thumb {
     background: rgba(0, 184, 148, 0.25);
     border-radius: 4px;
 }
@@ -404,5 +406,88 @@ input[type="file"]::-webkit-file-upload-button {
     #debug-btn {
         top: var(--space-sm);
         right: var(--space-sm);
+    }
+}
+
+/* ===== 右上角提示框 ===== */
+#toast-container {
+    position: fixed;
+    top: var(--space-lg);
+    right: var(--space-lg);
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    pointer-events: none;
+}
+
+.toast {
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15);
+    max-width: 20rem;
+    animation: slideIn 0.3s ease-out forwards, fadeOut 0.3s ease-in forwards 2.7s;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.toast-success {
+    background: linear-gradient(135deg, #48bb78, #38a169);
+    color: white;
+}
+
+.toast-error {
+    background: linear-gradient(135deg, #f56565, #e53e3e);
+    color: white;
+}
+
+.toast-info {
+    background: linear-gradient(135deg, #4299e1, #3182ce);
+    color: white;
+}
+
+.toast-content {
+    flex: 1;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: var(--text-lg);
+    cursor: pointer;
+    padding: 0;
+    min-width: auto;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toast-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: none;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
     }
 }
