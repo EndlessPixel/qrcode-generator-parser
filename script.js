@@ -127,7 +127,7 @@
     }
 
     // 日志记录函数
-    function log(message, level = 'info') {
+    function log(message, level = 'info', error = null) {
         const now = new Date();
         const date = now.toLocaleDateString('zh-CN', {
             year: 'numeric',
@@ -141,7 +141,16 @@
             hour12: false
         });
 
-        const logEntry = `[${date} ${time} ${level.toUpperCase()}] ${message}`;
+        let logEntry = `[${date} ${time} ${level.toUpperCase()}] ${message}`;
+        
+        // 如果提供了错误对象，记录错误堆栈
+        if (error) {
+            logEntry += `\n错误详情：${error.message}`;
+            if (error.stack) {
+                logEntry += `\n错误堆栈：${error.stack}`;
+            }
+        }
+        
         logEntries.push(logEntry);
 
         // 更新 UI（使用 HTML 元素添加颜色）
@@ -168,11 +177,23 @@
             }
             
             // 创建带颜色的日志元素
-            logElement.innerHTML = `
+            let logHtml = `
                 <span style="color: #888;">[${date} ${time}]</span> 
                 <span style="color: ${levelColor}; font-weight: bold;">${level.toUpperCase()}</span> 
                 <span style="color: #e0e0e0;">${message}</span>
             `;
+            
+            // 如果提供了错误对象，添加错误详情
+            if (error) {
+                logHtml += `
+                <div style="margin-top: 4px; padding-left: 20px; color: #ff6b6b; font-size: 12px;">
+                    <div>错误详情：${error.message}</div>
+                    ${error.stack ? `<div style="margin-top: 2px;">错误堆栈：${error.stack}</div>` : ''}
+                </div>
+            `;
+            }
+            
+            logElement.innerHTML = logHtml;
             
             debugLog.appendChild(logElement);
             // 自动滚动到底部
@@ -252,6 +273,26 @@
                 return;
             }
             
+            // 限制支持的文件类型
+            const allowedTypes = [
+                'text/plain',      // .txt
+                'text/markdown',    // .md
+                'text/html',        // .html
+                'text/css',         // .css
+                'text/javascript',  // .js
+                'application/json', // .json
+                'application/xml'   // .xml
+            ];
+            
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            const isAllowedExtension = ['txt', 'md', 'html', 'css', 'js', 'json', 'xml'].includes(fileExtension);
+            
+            if (!allowedTypes.includes(file.type) && !isAllowedExtension) {
+                log('上传文件，失败：文件类型不支持');
+                showToast('只支持文本文件（.txt, .md, .html, .css, .js, .json, .xml）', 'error');
+                return;
+            }
+            
             log('上传文件，成功：' + file.name);
             
             try {
@@ -274,6 +315,23 @@
             }
             log('获取输入框文本，成功');
         }
+        
+        // 内容体积预估
+        const contentLength = content.length;
+        log(`内容长度：${contentLength} 字符`);
+        
+        // 二维码容量估算（基于版本40 L级纠错，约2953个字符）
+        // 对于DataURL，由于base64编码，实际容量会更小
+        const estimatedCapacity = isFileContent ? 1500 : 2500;
+        
+        if (contentLength > estimatedCapacity) {
+            log('内容体积预估：过大，可能无法生成二维码');
+            showToast(`内容过大，无法生成二维码\n当前长度：${contentLength} 字符\n最大支持：${estimatedCapacity} 字符`, 'error');
+            return;
+        }
+        
+        log('内容体积预估：正常，可以生成二维码');
+        showToast(`内容长度：${contentLength} 字符\n预估二维码容量：正常`, 'info');
 
         // 清空容器并隐藏下载按钮
         qrcodeContainer.innerHTML = '';
@@ -334,8 +392,21 @@
                 }
             }
         } catch (error) {
-            log(`生成失败：${error.message}`);
-            qrcodeContainer.innerHTML = '<p style="color:red;">生成二维码时出错</p>';
+            let errorMessage = '生成二维码时出错';
+            let logMessage = `生成失败：${error.message}`;
+            
+            // 分析错误类型，提供更具体的错误信息
+            if (error.message.includes('capacity') || error.message.includes('size') || content.length > 3000) {
+                errorMessage = '生成失败：文件内容超过二维码容量上限';
+                logMessage = `生成失败：文件内容超过二维码容量上限，当前长度：${content.length} 字符`;
+            } else if (error.message.includes('data') || error.message.includes('format')) {
+                errorMessage = '生成失败：数据格式错误';
+                logMessage = `生成失败：数据格式错误 - ${error.message}`;
+            }
+            
+            log(logMessage, 'error', error);
+            qrcodeContainer.innerHTML = `<p style="color:red;">${errorMessage}</p>`;
+            showToast(errorMessage, 'error');
         }
     }
     window.generateQRCode = generateQRCode;
