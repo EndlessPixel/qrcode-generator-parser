@@ -73,6 +73,73 @@
         // 绑定文件下载按钮点击事件
         downloadFileBtn.addEventListener('click', downloadRestoredFile);
 
+        // 绑定纠错级别选择事件
+        const errorCorrectionSelect = document.getElementById('error-correction');
+        if (errorCorrectionSelect) {
+            errorCorrectionSelect.addEventListener('change', function() {
+                const selectedLevel = this.value;
+                log(`用户切换了纠错级别：${selectedLevel}`);
+                showToast(`已选择纠错级别：${selectedLevel}`, 'info');
+            });
+        }
+
+        // 绑定远程URL输入事件，与其他输入方式互斥
+        const remoteUrlInput = document.getElementById('remote-url');
+        if (remoteUrlInput) {
+            remoteUrlInput.addEventListener('input', function() {
+                // 当用户输入远程URL时，清除文件上传和文本输入
+                if (this.value.trim() !== '') {
+                    if (generateFileInput.files.length > 0) {
+                        generateFileInput.value = '';
+                        log('用户输入远程URL，清除了文件上传');
+                    }
+                    if (textInput.value.trim() !== '') {
+                        textInput.value = '';
+                        log('用户输入远程URL，清除了文本输入');
+                    }
+                }
+            });
+        }
+
+        // 绑定文本输入和文件上传的互斥事件
+        textInput.addEventListener('input', function() {
+            // 当用户输入文本时，清除文件上传和远程URL
+            if (this.value.trim() !== '') {
+                if (generateFileInput.files.length > 0) {
+                    generateFileInput.value = '';
+                    log('用户输入文本，清除了文件上传');
+                }
+                if (remoteUrlInput && remoteUrlInput.value.trim() !== '') {
+                    remoteUrlInput.value = '';
+                    log('用户输入文本，清除了远程URL');
+                }
+            }
+        });
+        
+        generateFileInput.addEventListener('change', function() {
+            // 当用户上传文件时，清除文本输入和远程URL
+            if (this.files.length > 0) {
+                if (textInput.value.trim() !== '') {
+                    textInput.value = '';
+                    log('用户上传文件，清除了文本输入');
+                }
+                if (remoteUrlInput && remoteUrlInput.value.trim() !== '') {
+                    remoteUrlInput.value = '';
+                    log('用户上传文件，清除了远程URL');
+                }
+            }
+        });
+
+        // 绑定复制按钮点击事件
+        const copyUrlBtn = document.getElementById('copy-url-btn');
+        const copyImageBtn = document.getElementById('copy-image-btn');
+        if (copyUrlBtn) {
+            copyUrlBtn.addEventListener('click', copyQRCodeUrl);
+        }
+        if (copyImageBtn) {
+            copyImageBtn.addEventListener('click', copyQRCodeImage);
+        }
+
         // 确保默认显示生成选项卡，解析选项卡隐藏
         showTab('generate');
     }
@@ -264,6 +331,8 @@
         
         // 检查是否有上传的文件
         const file = generateFileInput.files[0];
+        const remoteUrl = document.getElementById('remote-url').value.trim();
+        
         if (file) {
             // 只验证文件大小，不限制文件类型
             const maxSize = 1 * 1024 * 1024; // 1MB
@@ -305,12 +374,77 @@
                 showToast('文件读取失败，请重试', 'error');
                 return;
             }
+        } else if (remoteUrl) {
+            // 处理远程URL
+            log('使用远程URL生成：' + remoteUrl);
+            try {
+                // 验证URL格式
+                const urlObj = new URL(remoteUrl);
+                log('URL格式验证成功：' + urlObj.href);
+                
+                // 检查是否使用CORS代理
+                const useCorsProxy = document.getElementById('use-cors-proxy').checked;
+                let requestUrl = remoteUrl;
+                
+                if (useCorsProxy) {
+                    // 使用CORS代理服务器
+                    requestUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(remoteUrl)}`;
+                    log('使用CORS代理：' + requestUrl);
+                }
+                
+                // 发起请求获取JSON数据
+                log('开始发起网络请求...');
+                const response = await fetch(requestUrl, {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                log(`网络请求完成，状态码：${response.status}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                // 检查响应头
+                const contentType = response.headers.get('content-type');
+                log(`响应内容类型：${contentType}`);
+                
+                // 解析JSON
+                log('开始解析JSON数据...');
+                const jsonData = await response.json();
+                log('JSON数据解析成功');
+                
+                // 将JSON转换为字符串
+                content = JSON.stringify(jsonData);
+                log('远程JSON数据获取成功，数据长度：' + content.length);
+                showToast('远程JSON数据获取成功', 'success');
+            } catch (error) {
+                log(`远程URL处理失败：${error.message}`, 'error');
+                
+                // 提供更详细的错误信息和解决方案
+                let errorMessage = `远程URL处理失败：${error.message}`;
+                let solution = '';
+                
+                if (error.message === 'Failed to fetch') {
+                    errorMessage = '远程URL请求失败：无法连接到服务器';
+                    solution = '可能的原因：1. 网络连接问题 2. CORS跨域限制 3. 服务器未响应\n建议：尝试勾选"使用CORS代理"选项';
+                } else if (error.message.includes('HTTP error')) {
+                    errorMessage = `远程URL请求失败：服务器返回错误状态码`;
+                    solution = '请检查URL是否正确，服务器是否正常运行';
+                } else if (error.message.includes('JSON')) {
+                    errorMessage = '远程URL请求失败：响应不是有效的JSON格式';
+                    solution = '请确保URL返回的是有效的JSON数据';
+                }
+                
+                showToast(`${errorMessage}\n${solution}`, 'error');
+                return;
+            }
         } else {
             // 使用文本输入
             content = textInput.value.trim();
             if (!content) {
                 log('获取输入框文本，失败：输入框为空');
-                showToast('请输入文本或上传文件', 'error');
+                showToast('请输入文本、上传文件或输入远程URL', 'error');
                 return;
             }
             log('获取输入框文本，成功');
@@ -338,8 +472,12 @@
         downloadBtn.classList.add('hidden');
 
         try {
+            // 获取用户选择的纠错级别
+            const errorCorrectionLevel = document.getElementById('error-correction').value;
+            log(`使用纠错级别：${errorCorrectionLevel} 生成二维码`);
+            
             // 生成二维码数据
-            const qr = qrcode(0, 'H');
+            const qr = qrcode(0, errorCorrectionLevel);
             qr.addData(content);
             qr.make();
 
@@ -369,10 +507,13 @@
             const code = jsQR(imageData.data, imageData.width, imageData.height);
 
             if (code) {
-                // 对于文件内容，只验证是否成功解析，不验证内容完全匹配
-                if (isFileContent || code.data === content) {
+                // 对于文件内容和远程URL内容，只验证是否成功解析，不验证内容完全匹配
+                // 因为文件内容是DataURL格式，远程URL内容可能有编码差异
+                if (isFileContent || remoteUrl || code.data === content) {
                     log('自动解析验证成功');
                     downloadBtn.classList.remove('hidden');
+                    document.getElementById('copy-url-btn').classList.remove('hidden');
+                    document.getElementById('copy-image-btn').classList.remove('hidden');
                 } else {
                     log('自动验证失败' + (retryCount < maxRetries ? '，准备重试...' : '，已达最大重试次数'));
                     if (retryCount < maxRetries) {
@@ -433,93 +574,127 @@
         log('开始解析二维码...');
 
         const file = fileInput.files[0];
+        const imageUrl = document.getElementById('image-url').value.trim();
         parsedTextDiv.textContent = '';
         parsedDataURL = null;
         downloadFileBtn.classList.add('hidden');
         
-        if (!file) {
-            log('上传文件，失败：未选择文件');
-            showToast('请选择图片文件', 'error');
+        if (!file && !imageUrl) {
+            log('上传文件，失败：未选择文件且未输入图片链接');
+            showToast('请选择图片文件或输入图片链接', 'error');
             return;
         }
 
-        // 验证文件类型
-        const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        if (!validTypes.includes(file.type)) {
-            log('上传文件，失败：文件类型不支持');
-            showToast('请选择支持的图片格式（JPEG、PNG、GIF、WebP）', 'error');
-            return;
-        }
+        if (file) {
+            // 验证文件类型
+            const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            if (!validTypes.includes(file.type)) {
+                log('上传文件，失败：文件类型不支持');
+                showToast('请选择支持的图片格式（JPEG、PNG、GIF、WebP）', 'error');
+                return;
+            }
 
-        // 验证文件大小（限制为5MB）
-        const maxSize = 5 * 1024 * 1024;
-        if (file.size > maxSize) {
-            log('上传文件，失败：文件大小超过限制');
-            showToast('图片文件大小不能超过5MB', 'error');
-            return;
-        }
+            // 验证文件大小（限制为5MB）
+            const maxSize = 5 * 1024 * 1024;
+            if (file.size > maxSize) {
+                log('上传文件，失败：文件大小超过限制');
+                showToast('图片文件大小不能超过5MB', 'error');
+                return;
+            }
 
-        log('上传文件，成功');
-        const reader = new FileReader();
-        reader.onload = function (event) {
-            log('读取文件，成功');
-            const img = new Image();
-            img.onload = function () {
-                log('加载图片，成功');
+            log('上传文件，成功');
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                log('读取文件，成功');
+                processImage(event.target.result);
+            };
+            reader.onerror = function () {
+                log('读取文件失败');
+                parsedTextDiv.textContent = '文件读取失败';
+            };
+            reader.readAsDataURL(file);
+        } else if (imageUrl) {
+            // 处理图片链接（包括 data:image 链接）
+            log('使用图片链接解析：' + imageUrl);
+            processImage(imageUrl);
+        }
+    }
+
+    // 处理图片并解析二维码
+    function processImage(imageSource) {
+        const img = new Image();
+        img.onload = function () {
+            log('加载图片，成功');
+            
+            // 限制图片尺寸，避免过大的图片导致性能问题
+            const maxDimension = 1000;
+            let width = img.width;
+            let height = img.height;
+            
+            if (width > maxDimension || height > maxDimension) {
+                const ratio = Math.min(maxDimension / width, maxDimension / height);
+                width *= ratio;
+                height *= ratio;
+            }
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                log('获取 canvas 上下文失败');
+                parsedTextDiv.textContent = '无法创建画布上下文';
+                return;
+            }
+            ctx.drawImage(img, 0, 0, width, height);
+            const imageData = ctx.getImageData(0, 0, width, height);
+            const code = jsQR(imageData.data, width, height);
+            if (code) {
+                log('解析二维码，成功');
                 
-                // 限制图片尺寸，避免过大的图片导致性能问题
-                const maxDimension = 1000;
-                let width = img.width;
-                let height = img.height;
-                
-                if (width > maxDimension || height > maxDimension) {
-                    const ratio = Math.min(maxDimension / width, maxDimension / height);
-                    width *= ratio;
-                    height *= ratio;
-                }
-                
-                const canvas = document.createElement('canvas');
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    log('获取 canvas 上下文失败');
-                    parsedTextDiv.textContent = '无法创建画布上下文';
-                    return;
-                }
-                ctx.drawImage(img, 0, 0, width, height);
-                const imageData = ctx.getImageData(0, 0, width, height);
-                const code = jsQR(imageData.data, width, height);
-                if (code) {
-                    log('解析二维码，成功');
-                    
-                    // 检查是否为DataURL格式
-                    const codeData = code.data;
-                    if (codeData.startsWith('data:')) {
-                        log('识别到DataURL格式内容，可能是文件二维码');
-                        parsedDataURL = codeData;
-                        parsedTextDiv.textContent = '解析结果：文件内容（DataURL格式）';
-                        downloadFileBtn.classList.remove('hidden');
-                    } else {
-                        log('识别到普通文本内容');
-                        parsedTextDiv.textContent = '解析结果：' + codeData;
-                    }
+                // 检查是否为DataURL格式
+                const codeData = code.data;
+                if (codeData.startsWith('data:')) {
+                    log('识别到DataURL格式内容，可能是文件二维码');
+                    parsedDataURL = codeData;
+                    parsedTextDiv.textContent = '解析结果：文件内容（DataURL格式）';
+                    downloadFileBtn.classList.remove('hidden');
+                } else if (isURL(codeData)) {
+                    log('识别到URL格式内容');
+                    parsedTextDiv.innerHTML = `解析结果：<a href="${codeData}" target="_blank">${codeData}</a>`;
+                    // 添加跳转按钮
+                    const jumpBtn = document.createElement('button');
+                    jumpBtn.textContent = '跳转到链接';
+                    jumpBtn.style.marginLeft = '10px';
+                    jumpBtn.onclick = function() {
+                        window.open(codeData, '_blank');
+                        log('用户点击了跳转按钮，打开链接：' + codeData);
+                    };
+                    parsedTextDiv.appendChild(jumpBtn);
                 } else {
-                    log('解析二维码，失败');
-                    parsedTextDiv.textContent = '无法解析二维码';
+                    log('识别到普通文本内容');
+                    parsedTextDiv.textContent = '解析结果：' + codeData;
                 }
-            };
-            img.onerror = function () {
-                log('加载图片失败');
-                parsedTextDiv.textContent = '图片加载失败';
-            };
-            img.src = event.target.result;
+            } else {
+                log('解析二维码，失败');
+                parsedTextDiv.textContent = '无法解析二维码';
+            }
         };
-        reader.onerror = function () {
-            log('读取文件失败');
-            parsedTextDiv.textContent = '文件读取失败';
+        img.onerror = function () {
+            log('加载图片失败');
+            parsedTextDiv.textContent = '图片加载失败';
         };
-        reader.readAsDataURL(file);
+        img.src = imageSource;
+    }
+
+    // 检查字符串是否为URL
+    function isURL(str) {
+        try {
+            new URL(str);
+            return true;
+        } catch {
+            return false;
+        }
     }
     window.parseQRCode = parseQRCode;
 
@@ -690,6 +865,61 @@
         } catch (error) {
             log(`文件下载失败：${error.message}`);
             showToast(`文件下载失败：${error.message}\n请重试或检查二维码内容是否正确`, 'error');
+        }
+    }
+
+    // 复制二维码URL
+    function copyQRCodeUrl() {
+        const img = qrcodeContainer.querySelector('img');
+        if (img) {
+            const url = img.src;
+            navigator.clipboard.writeText(url)
+                .then(() => {
+                    log('复制二维码URL成功');
+                    showToast('二维码URL已复制到剪贴板', 'success');
+                })
+                .catch(err => {
+                    log(`复制二维码URL失败：${err.message}`, 'error');
+                    showToast('复制失败，请手动复制', 'error');
+                });
+        } else {
+            log('复制失败：未找到二维码图片');
+            showToast('未找到二维码图片', 'error');
+        }
+    }
+
+    // 复制二维码图片
+    function copyQRCodeImage() {
+        const img = qrcodeContainer.querySelector('img');
+        if (img) {
+            // 创建canvas元素
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            
+            // 尝试复制图片到剪贴板
+            canvas.toBlob(blob => {
+                try {
+                    const item = new ClipboardItem({ 'image/png': blob });
+                    navigator.clipboard.write([item])
+                        .then(() => {
+                            log('复制二维码图片成功');
+                            showToast('二维码图片已复制到剪贴板', 'success');
+                        })
+                        .catch(err => {
+                            log(`复制二维码图片失败：${err.message}`, 'error');
+                            showToast('复制失败，请手动复制', 'error');
+                        });
+                } catch (error) {
+                    log(`复制二维码图片失败：${error.message}`, 'error');
+                    showToast('复制失败，请手动复制', 'error');
+                }
+            });
+        } else {
+            log('复制失败：未找到二维码图片');
+            showToast('未找到二维码图片', 'error');
         }
     }
 

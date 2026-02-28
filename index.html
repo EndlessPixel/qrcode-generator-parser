@@ -29,8 +29,27 @@
         <input type="file" id="file-input" name="file" accept=".txt,.md,.html,.css,.js,.json,.xml">
       </div>
       <div class="form-group">
+        <label for="error-correction">纠错级别：</label>
+        <select id="error-correction" name="error-correction">
+          <option value="L">低 (L) - 7%</option>
+          <option value="M" selected>中 (M) - 15%</option>
+          <option value="Q">较高 (Q) - 25%</option>
+          <option value="H">高 (H) - 30%</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="remote-url">或输入远程URL（返回JSON）：</label>
+        <input type="text" id="remote-url" name="remote-url" placeholder="输入返回JSON数据的URL">
+      </div>
+      <div class="form-group">
+        <label for="use-cors-proxy">使用CORS代理（解决跨域问题）：</label>
+        <input type="checkbox" id="use-cors-proxy" name="use-cors-proxy">
+      </div>
+      <div class="form-group">
         <button onclick="generateQRCode()">生成二维码</button>
         <button id="download-btn" class="hidden">下载二维码图片</button>
+        <button id="copy-url-btn" class="hidden">复制二维码URL</button>
+        <button id="copy-image-btn" class="hidden">复制二维码图片</button>
       </div>
       <div id="qrcode-container"></div>
     </div>
@@ -40,6 +59,10 @@
       <div class="form-group">
         <label for="image-upload">上传二维码图片：</label>
         <input type="file" id="image-upload" name="qr-image" accept="image/*">
+      </div>
+      <div class="form-group">
+        <label for="image-url">或输入图片链接：</label>
+        <input type="text" id="image-url" name="image-url" placeholder="输入 data:image 链接或普通图片 URL">
       </div>
       <div class="form-group">
         <button onclick="parseQRCode()">解析二维码</button>
