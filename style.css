@@ -77,8 +77,10 @@ body {
 
 /* ===== 通用组件 ===== */
 .container {
-    width: 43.75rem;
-    /* 700px */
+    width: 1200vw;
+    /* 大屏幕上使用90%视口宽度 */
+    max-width: 75rem;
+    /* 最大宽度75rem，约1200px */
     background: rgba(255, 255, 255, 0.96);
     border-radius: var(--radius-xl);
     backdrop-filter: blur(20px);
@@ -275,10 +277,12 @@ input[type="file"]::-webkit-file-upload-button {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 50rem;
-    /* 800px */
-    max-width: 95vw;
-    max-height: 80vh;
+    width: 90vw;
+    /* 大屏幕上使用90%视口宽度 */
+    max-width: 80rem;
+    /* 最大宽度80rem，约1280px */
+    max-height: 90vh;
+    /* 最大高度90%视口高度 */
     background: var(--debug-bg);
     border-radius: var(--radius-lg);
     padding: var(--space-xl);
@@ -293,7 +297,8 @@ input[type="file"]::-webkit-file-upload-button {
 }
 
 #debug-content #debug-log {
-    max-height: 60vh;
+    max-height: 70vh;
+    /* 增加最大高度到70vh，更好地利用空间 */
     overflow-y: auto;
     padding: var(--space-lg);
     background: var(--debug-code-bg);
